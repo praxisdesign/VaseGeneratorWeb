@@ -28,6 +28,10 @@ npm run dev
 
 Open the local URL shown in the terminal. Create a production build with `npm run build`.
 
+The `main` branch is also deployed automatically to GitHub Pages:
+
+https://praxisdesign.github.io/VaseGeneratorWeb/
+
 ## Controls
 
 - Select a preset from the left panel.
