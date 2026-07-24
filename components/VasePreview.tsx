@@ -1,12 +1,83 @@
-import { Canvas } from "@react-three/fiber";
+import { Canvas, useThree } from "@react-three/fiber";
 import { Grid, Line, OrbitControls } from "@react-three/drei";
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
+import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { createLathePoints } from "@/lib/geometry";
 import { applyPattern } from "@/lib/patterns";
 import { generateToolpath, riskColor } from "@/lib/toolpath";
 import { useGeneratorStore } from "@/store/generatorStore";
-import type { ToolpathPoint } from "@/lib/types";
+import type { CameraSnapshot, ToolpathPoint } from "@/lib/types";
+
+// Guards against ever saving or restoring a broken camera snapshot -- e.g. one
+// captured mid-glitch while the Canvas/OrbitControls default-camera registration is
+// still settling right after mount (position and target collapsed to the same
+// point, or a NaN/Infinity). Restoring a snapshot like this would reproduce a
+// "camera won't move" state on every future visit.
+function isValidCameraSnapshot(camera: CameraSnapshot | null): camera is CameraSnapshot {
+  if (!camera) return false;
+  const values = [...camera.position, ...camera.target];
+  if (values.length !== 6 || values.some((value) => typeof value !== "number" || !Number.isFinite(value))) {
+    return false;
+  }
+  const [px, py, pz] = camera.position;
+  const [tx, ty, tz] = camera.target;
+  return Math.hypot(px - tx, py - ty, pz - tz) > 1e-4;
+}
+
+function CameraController() {
+  const controlsRef = useRef<OrbitControlsImpl>(null);
+  const { camera, invalidate } = useThree();
+  const storedCamera = useGeneratorStore((state) => state.camera);
+  const setCamera = useGeneratorStore((state) => state.setCamera);
+  const hasAppliedRef = useRef(false);
+
+  useEffect(() => {
+    if (hasAppliedRef.current || !isValidCameraSnapshot(storedCamera)) {
+      return undefined;
+    }
+    hasAppliedRef.current = true;
+
+    const applyRestoredCamera = () => {
+      camera.position.set(...storedCamera.position);
+      camera.updateProjectionMatrix();
+      controlsRef.current?.target.set(...storedCamera.target);
+      controlsRef.current?.update();
+      invalidate();
+    };
+
+    // Re-assert for a short window: right after the Canvas first mounts, the
+    // default-camera/OrbitControls registration can still be settling, which
+    // silently overwrites a same-tick set() a moment later and can even leave
+    // OrbitControls unresponsive to further drag/orbit input.
+    let cancelled = false;
+    let frame = 0;
+    const reapply = () => {
+      if (cancelled) return;
+      applyRestoredCamera();
+      frame += 1;
+      if (frame < 20) requestAnimationFrame(reapply);
+    };
+    reapply();
+    return () => {
+      cancelled = true;
+    };
+  }, [camera, invalidate, storedCamera]);
+
+  function handleCameraChangeEnd() {
+    const controls = controlsRef.current;
+    if (!controls) return;
+    const candidate: CameraSnapshot = {
+      position: controls.object.position.toArray() as [number, number, number],
+      target: controls.target.toArray() as [number, number, number],
+    };
+    if (isValidCameraSnapshot(candidate)) setCamera(candidate);
+  }
+
+  return (
+    <OrbitControls ref={controlsRef} makeDefault target={[0, 300, 0]} minDistance={500} maxDistance={2500} onEnd={handleCameraChangeEnd} />
+  );
+}
 
 export function VasePreview() {
   return <Canvas camera={{ position: [900, 560, 1100], fov: 42, near: 1, far: 5000 }} shadows gl={{ preserveDrawingBuffer: true }}>
@@ -15,7 +86,7 @@ export function VasePreview() {
     <directionalLight position={[300, 500, 300]} intensity={2.8} castShadow />
     <VaseGeometry />
     <Grid args={[1600, 1600]} cellSize={35} cellColor="#d5deea" sectionSize={175} sectionColor="#b8c5d6" fadeDistance={1300} />
-    <OrbitControls makeDefault target={[0, 300, 0]} minDistance={500} maxDistance={2500} />
+    <CameraController />
   </Canvas>;
 }
 

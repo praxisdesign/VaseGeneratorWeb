@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { VASE_PRESETS } from "@/lib/presets";
-import type { GeneratorSettings, MaskPoint, ProfilePoint } from "@/lib/types";
+import type { CameraSnapshot, GeneratorSettings, MaskPoint, ProfilePoint } from "@/lib/types";
 
 // Portal embeds this tool once per project (see ToolWorkspace.tsx), passing the
 // project id as `?project=`. Scoping the persisted storage key by it keeps two
@@ -20,11 +20,13 @@ type GeneratorStore = {
   simulationIndex: number;
   simulationPlaying: boolean;
   playbackSpeed: number;
+  camera: CameraSnapshot | null;
   selectPreset: (id: string) => void;
   updatePoint: (id: string, patch: Partial<ProfilePoint>) => void;
   updateMaskPoint: (id: string, patch: Partial<MaskPoint>) => void;
   updateSettings: (patch: Partial<GeneratorSettings>) => void;
   updateSimulation: (patch: Partial<Pick<GeneratorStore, "simulationIndex" | "simulationPlaying" | "playbackSpeed">>) => void;
+  setCamera: (camera: CameraSnapshot | null) => void;
 };
 
 const initial = VASE_PRESETS[2];
@@ -51,6 +53,7 @@ export const useGeneratorStore = create<GeneratorStore>()(
       simulationIndex: 0,
       simulationPlaying: false,
       playbackSpeed: 1,
+      camera: null,
       selectPreset: (id) => set(() => {
         const preset = VASE_PRESETS.find((item) => item.id === id) ?? initial;
         return { presetId: preset.id, points: preset.points.map((point) => ({ ...point })), simulationIndex: 0, simulationPlaying: false };
@@ -64,12 +67,14 @@ export const useGeneratorStore = create<GeneratorStore>()(
           : { settings: { ...state.settings, ...patch }, simulationIndex: 0, simulationPlaying: false };
       }),
       updateSimulation: (patch) => set(patch),
+      setCamera: (camera) => set({ camera }),
     }),
     {
       name: storageKey("vase-generator"),
       // Simulation playback position is transient viewing state, not design work --
-      // restoring the profile/mask/settings is what actually matters after a refresh.
-      partialize: (state) => ({ presetId: state.presetId, points: state.points, mask: state.mask, settings: state.settings }),
+      // restoring the profile/mask/settings/camera is what actually matters after a
+      // refresh.
+      partialize: (state) => ({ presetId: state.presetId, points: state.points, mask: state.mask, settings: state.settings, camera: state.camera }),
     },
   ),
 );

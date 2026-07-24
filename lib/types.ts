@@ -1,5 +1,6 @@
 export type ProfilePoint = { id: string; height: number; radius: number };
 export type MaskPoint = { id: string; height: number; strength: number };
+export type CameraSnapshot = { position: [number, number, number]; target: [number, number, number] };
 export type PatternType = "none" | "verticalRibs" | "horizontalBands" | "diamond" | "spiral" | "cellular" | "noise";
 export type PreviewMode = "material" | "bead" | "heatmap";
 
