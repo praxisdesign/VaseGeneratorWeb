@@ -9,7 +9,7 @@ import { useGeneratorStore } from "@/store/generatorStore";
 import type { ToolpathPoint } from "@/lib/types";
 
 export function VasePreview() {
-  return <Canvas camera={{ position: [900, 560, 1100], fov: 42, near: 1, far: 5000 }} shadows>
+  return <Canvas camera={{ position: [900, 560, 1100], fov: 42, near: 1, far: 5000 }} shadows gl={{ preserveDrawingBuffer: true }}>
     <color attach="background" args={["#edf2f7"]} />
     <ambientLight intensity={1.4} />
     <directionalLight position={[300, 500, 300]} intensity={2.8} castShadow />

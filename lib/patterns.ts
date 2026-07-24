@@ -37,5 +37,10 @@ export function evaluatePattern(angle: number, height: number, settings: Generat
 
 export function applyPattern(baseRadius: number, angle: number, height: number, settings: GeneratorSettings, mask: MaskPoint[]) {
   const strength = evaluateMask(mask, height);
-  return baseRadius + evaluatePattern(angle, height, settings) * settings.patternAmplitude * strength;
+  const raw = baseRadius + evaluatePattern(angle, height, settings) * settings.patternAmplitude * strength;
+  // A pattern displacement larger than the base radius would flip the point past the
+  // vase's center axis, producing self-intersecting, physically unprintable geometry.
+  // The nozzle can't extrude a wall thinner than itself, so that's also the floor.
+  const minRadius = settings.nozzleDiameter / 2;
+  return Math.max(minRadius, raw);
 }

@@ -8,6 +8,11 @@ export function generateToolpath(profile: ProfilePoint[], settings: GeneratorSet
   const turns = scaledHeight / settings.layerHeight;
   const samplesPerTurn = 48;
   const count = Math.max(240, Math.ceil(turns * samplesPerTurn));
+  // For short vases, `count` gets padded up to the 240-sample floor for smoothness,
+  // which means each index no longer spans 1/48th of a turn as `samplesPerTurn` alone
+  // would assume. Derive the real "one turn back" step from the padded count so the
+  // "layer below" comparison (and the overhang it drives) stays correct.
+  const indexStepsPerTurn = Math.max(1, Math.round(count / Math.max(turns, 1e-6)));
   const result: ToolpathPoint[] = [];
   let elapsedTime = 0;
 
@@ -21,7 +26,7 @@ export function generateToolpath(profile: ProfilePoint[], settings: GeneratorSet
     const y = Math.sin(angle) * radius;
     const previous = result[index - 1];
     if (previous) elapsedTime += Math.hypot(x - previous.x, y - previous.y, z - previous.z) / settings.printSpeed * 60;
-    const below = result[index - samplesPerTurn];
+    const below = result[index - indexStepsPerTurn];
     const horizontalOffset = below ? Math.hypot(x - below.x, y - below.y) : 0;
     const overhangAngle = Math.atan2(horizontalOffset, settings.layerHeight) * 180 / Math.PI;
     result.push({

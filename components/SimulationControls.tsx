@@ -46,7 +46,7 @@ export function SimulationControls({ path }: { path: ToolpathPoint[] }) {
     </div>
     <input className="timeline" type="range" min={0} max={path.length - 1} value={simulationIndex} onChange={(event) => updateSimulation({ simulationIndex: Number(event.target.value), simulationPlaying: false })} />
     <div className="sim-readout">
-      <span>Line <input type="number" min={7} max={path.length + 6} value={point.gcodeLine} onChange={(event) => updateSimulation({ simulationIndex: Math.max(0, Math.min(path.length - 1, Number(event.target.value) - 7)), simulationPlaying: false })} /></span>
+      <span>Line <input type="number" step={1} min={7} max={path.length + 6} value={point.gcodeLine} onChange={(event) => updateSimulation({ simulationIndex: Math.max(0, Math.min(path.length - 1, Math.round(Number(event.target.value)) - 7)), simulationPlaying: false })} /></span>
       <span>Layer <b>{point.layer}</b></span><span>Z <b>{point.z.toFixed(1)} mm</b></span><span>Time <b>{formatTime(point.elapsedTime)}</b></span>
     </div>
   </div>;
